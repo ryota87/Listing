@@ -4,35 +4,135 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<title>阿波座・西長堀 相場分析</title>
+<title>阿波座・西長堀 中古マンション相場</title>
 
 <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
 
 <style>
-body {
-  font-family: sans-serif;
-  margin: 20px;
+*{
+  box-sizing:border-box;
 }
 
-#chart {
-  width: 100%;
-  height: 900px;
+body{
+  margin:0;
+  background:#111827;
+  color:#f3f4f6;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+}
+
+.container{
+  max-width:1400px;
+  margin:0 auto;
+  padding:16px;
+}
+
+h1{
+  margin:0 0 16px;
+  font-size:24px;
+  font-weight:700;
+}
+
+#chart{
+  width:100%;
+  height:78vh;
+  background:#1f2937;
+  border-radius:12px;
+}
+
+#detailCard{
+  position:fixed;
+  right:16px;
+  bottom:16px;
+  width:320px;
+  background:#1f2937;
+  border:1px solid #374151;
+  border-radius:12px;
+  padding:16px;
+  box-shadow:0 8px 24px rgba(0,0,0,.4);
+  z-index:999;
+}
+
+#detailCard h3{
+  margin-top:0;
+}
+
+#detailCard p{
+  margin:6px 0;
+}
+
+#detailCard a{
+  color:#60a5fa;
+  text-decoration:none;
+}
+
+#detailCard a:hover{
+  text-decoration:underline;
+}
+
+@media(max-width:768px){
+
+  .container{
+    padding:10px;
+  }
+
+  h1{
+    font-size:18px;
+  }
+
+  #chart{
+    height:65vh;
+  }
+
+  #detailCard{
+    position:static;
+    width:100%;
+    margin-top:12px;
+  }
+
 }
 </style>
 </head>
 
 <body>
 
-<h2>阿波座・西長堀 中古マンション相場</h2>
+<div class="container">
+
+<h1>阿波座・西長堀 中古マンション相場</h1>
 
 <div id="chart"></div>
+
+<div id="detailCard">
+  <div id="detailContent">
+    点をタップすると詳細が表示されます
+  </div>
+</div>
+
+</div>
 
 <script>
 
 const CSV_URL =
 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT3zv3NGxoRsa4ClgKmx2Aiaxkb58m-9SHxIIlBPwzotr-ceOB0pHZpt8wBzLUKfvOCXTVJC7awSVI7/pub?gid=1531469848&single=true&output=csv';
 
-async function loadData() {
+const quarterColors = {
+  '2025Q1':'#3b82f6',
+  '2025Q2':'#06b6d4',
+  '2025Q3':'#22c55e',
+  '2025Q4':'#eab308',
+  '2026Q1':'#f97316',
+  '2026Q2':'#ef4444',
+  '2026Q3':'#a855f7',
+  '2026Q4':'#ec4899'
+};
+
+const MY_HOME = {
+  buildYm:'1999-09',
+  area:62.74,
+  purchasePrice:3450,
+  renovatedPrice:4300
+};
+
+async function loadData(){
 
   const csv =
     await fetch(CSV_URL)
@@ -42,16 +142,19 @@ async function loadData() {
     csv.trim().split('\n');
 
   const headers =
-    lines[0].split(',');
+    lines[0]
+      .replace(/\r/g,'')
+      .split(',');
 
   const data =
     lines.slice(1).map(line => {
 
-      const cols = line.split(',');
+      const cols =
+        line.replace(/\r/g,'').split(',');
 
       const row = {};
 
-      headers.forEach((h, i) => {
+      headers.forEach((h,i)=>{
         row[h] = cols[i];
       });
 
@@ -59,124 +162,275 @@ async function loadData() {
     });
 
   drawChart(data);
-
 }
 
-function drawChart(data) {
+function drawChart(data){
 
   const quarters =
     [...new Set(
       data.map(x => x.quarter)
-    )];
+    )].sort();
 
   const traces = [];
 
-  quarters.forEach(q => {
+  quarters.forEach(q=>{
 
     const normal =
       data.filter(x =>
         x.quarter === q &&
-        x.renovated === 'FALSE'
+        String(x.renovated).toUpperCase() === 'FALSE'
       );
 
     const renovated =
       data.filter(x =>
         x.quarter === q &&
-        x.renovated === 'TRUE'
+        String(x.renovated).toUpperCase() === 'TRUE'
       );
 
     traces.push({
 
-      x: normal.map(x => x.build_ym),
-      y: normal.map(x => Number(x.unit_price)),
+      x: normal.map(x =>
+        new Date(x.build_ym + '-01')
+      ),
 
-      mode: 'markers',
-      type: 'scatter',
+      y: normal.map(x =>
+        Number(x.unit_price)
+      ),
 
-      name: `${q} 非リノベ`,
+      mode:'markers',
 
-      marker: {
-        size: 10,
-        symbol: 'circle'
+      type:'scatter',
+
+      name:q + ' 非リノベ',
+
+      marker:{
+        size:12,
+        color:quarterColors[q] || '#9ca3af',
+        symbol:'circle',
+        line:{
+          width:1,
+          color:'#ffffff'
+        }
       },
 
-      customdata: normal,
+      customdata:normal,
 
       hovertemplate:
         '<b>%{customdata.name}</b><br>' +
-        '平米単価: %{y}万円<br>' +
-        '<extra></extra>'
+        '平米単価 %{y:.1f}万円/㎡<extra></extra>'
     });
 
     traces.push({
 
-      x: renovated.map(x => x.build_ym),
-      y: renovated.map(x => Number(x.unit_price)),
+      x: renovated.map(x =>
+        new Date(x.build_ym + '-01')
+      ),
 
-      mode: 'markers',
-      type: 'scatter',
+      y: renovated.map(x =>
+        Number(x.unit_price)
+      ),
 
-      name: `${q} リノベ`,
+      mode:'markers',
 
-      marker: {
-        size: 12,
-        symbol: 'diamond'
+      type:'scatter',
+
+      name:q + ' リノベ',
+
+      marker:{
+        size:12,
+        color:quarterColors[q] || '#9ca3af',
+        symbol:'diamond',
+        line:{
+          width:1,
+          color:'#ffffff'
+        }
       },
 
-      customdata: renovated,
+      customdata:renovated,
 
       hovertemplate:
         '<b>%{customdata.name}</b><br>' +
-        '平米単価: %{y}万円<br>' +
-        '<extra></extra>'
+        '平米単価 %{y:.1f}万円/㎡<extra></extra>'
     });
 
+  });
+
+  const purchaseUnitPrice =
+    Number(
+      (
+        MY_HOME.purchasePrice /
+        MY_HOME.area
+      ).toFixed(2)
+    );
+
+  const renovatedUnitPrice =
+    Number(
+      (
+        MY_HOME.renovatedPrice /
+        MY_HOME.area
+      ).toFixed(2)
+    );
+
+  traces.push({
+
+    x:[
+      new Date(
+        MY_HOME.buildYm + '-01'
+      )
+    ],
+
+    y:[
+      purchaseUnitPrice
+    ],
+
+    mode:'markers+text',
+
+    text:['購入時'],
+
+    textposition:'top center',
+
+    name:'自宅購入時',
+
+    marker:{
+      size:24,
+      color:'#000000',
+      symbol:'star',
+      line:{
+        width:2,
+        color:'#ffffff'
+      }
+    },
+
+    customdata:[{
+      name:'自宅購入時',
+      price_man:MY_HOME.purchasePrice,
+      area_m2:MY_HOME.area,
+      unit_price:purchaseUnitPrice,
+      build_ym:MY_HOME.buildYm,
+      station:'西長堀',
+      walk_min:'',
+      url:''
+    }]
+  });
+
+  traces.push({
+
+    x:[
+      new Date(
+        MY_HOME.buildYm + '-01'
+      )
+    ],
+
+    y:[
+      renovatedUnitPrice
+    ],
+
+    mode:'markers+text',
+
+    text:['リノベ後'],
+
+    textposition:'top center',
+
+    name:'自宅リノベ後',
+
+    marker:{
+      size:24,
+      color:'#ef4444',
+      symbol:'star',
+      line:{
+        width:2,
+        color:'#ffffff'
+      }
+    },
+
+    customdata:[{
+      name:'自宅リノベ後',
+      price_man:MY_HOME.renovatedPrice,
+      area_m2:MY_HOME.area,
+      unit_price:renovatedUnitPrice,
+      build_ym:MY_HOME.buildYm,
+      station:'西長堀',
+      walk_min:'',
+      url:''
+    }]
   });
 
   Plotly.newPlot(
     'chart',
     traces,
     {
-      title:
-        '阿波座・西長堀 中古マンション相場',
 
-      xaxis: {
-        title: '建築年月'
+      paper_bgcolor:'#111827',
+
+      plot_bgcolor:'#111827',
+
+      font:{
+        color:'#f3f4f6'
       },
 
-      yaxis: {
-        title: '平米単価（万円/㎡）'
+      xaxis:{
+        title:'建築年月',
+        type:'date',
+        gridcolor:'#374151'
       },
 
-      hovermode: 'closest'
+      yaxis:{
+        title:'平米単価（万円/㎡）',
+        gridcolor:'#374151'
+      },
+
+      legend:{
+        orientation:'h',
+        y:1.1
+      },
+
+      hovermode:'closest',
+
+      margin:{
+        l:70,
+        r:20,
+        t:40,
+        b:70
+      }
     },
 
     {
-      responsive: true
+      responsive:true
     }
   );
 
   document
     .getElementById('chart')
-    .on('plotly_click', function(evt) {
+    .on('plotly_click', function(evt){
 
       const d =
         evt.points[0].customdata;
 
-      alert(
-`${d.name}
+      document.getElementById(
+        'detailContent'
+      ).innerHTML = `
 
-価格: ${d.price_man}万円
-面積: ${d.area_m2}㎡
-平米単価: ${d.unit_price}
+        <h3>${d.name}</h3>
 
-駅: ${d.station}
-徒歩: ${d.walk_min}分
+        <p><b>価格</b>：${d.price_man}万円</p>
 
-建築年月: ${d.build_ym}
+        <p><b>面積</b>：${d.area_m2}㎡</p>
 
-${d.url}`
-      );
+        <p><b>平米単価</b>：${d.unit_price}万円/㎡</p>
+
+        <p><b>駅</b>：${d.station || '-'}</p>
+
+        <p><b>徒歩</b>：${d.walk_min || '-'}分</p>
+
+        <p><b>建築年月</b>：${d.build_ym}</p>
+
+        ${
+          d.url
+          ? `<p><a href="${d.url}" target="_blank">SUUMOを見る</a></p>`
+          : ''
+        }
+
+      `;
 
     });
 
