@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>阿波座・西長堀 相場分析</title>
+
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+
+<style>
+body {
+  font-family: sans-serif;
+  margin: 20px;
+}
+
+#chart {
+  width: 100%;
+  height: 900px;
+}
+</style>
+</head>
+
+<body>
+
+<h2>阿波座・西長堀 中古マンション相場</h2>
+
+<div id="chart"></div>
+
+<script>
+
+const CSV_URL =
+'https://docs.google.com/spreadsheets/d/e/2PACX-1vT3zv3NGxoRsa4ClgKmx2Aiaxkb58m-9SHxIIlBPwzotr-ceOB0pHZpt8wBzLUKfvOCXTVJC7awSVI7/pub?gid=1531469848&single=true&output=csv';
+
+async function loadData() {
+
+  const csv =
+    await fetch(CSV_URL)
+      .then(r => r.text());
+
+  const lines =
+    csv.trim().split('\n');
+
+  const headers =
+    lines[0].split(',');
+
+  const data =
+    lines.slice(1).map(line => {
+
+      const cols = line.split(',');
+
+      const row = {};
+
+      headers.forEach((h, i) => {
+        row[h] = cols[i];
+      });
+
+      return row;
+    });
+
+  drawChart(data);
+
+}
+
+function drawChart(data) {
+
+  const quarters =
+    [...new Set(
+      data.map(x => x.quarter)
+    )];
+
+  const traces = [];
+
+  quarters.forEach(q => {
+
+    const normal =
+      data.filter(x =>
+        x.quarter === q &&
+        x.renovated === 'FALSE'
+      );
+
+    const renovated =
+      data.filter(x =>
+        x.quarter === q &&
+        x.renovated === 'TRUE'
+      );
+
+    traces.push({
+
+      x: normal.map(x => x.build_ym),
+      y: normal.map(x => Number(x.unit_price)),
+
+      mode: 'markers',
+      type: 'scatter',
+
+      name: `${q} 非リノベ`,
+
+      marker: {
+        size: 10,
+        symbol: 'circle'
+      },
+
+      customdata: normal,
+
+      hovertemplate:
+        '<b>%{customdata.name}</b><br>' +
+        '平米単価: %{y}万円<br>' +
+        '<extra></extra>'
+    });
+
+    traces.push({
+
+      x: renovated.map(x => x.build_ym),
+      y: renovated.map(x => Number(x.unit_price)),
+
+      mode: 'markers',
+      type: 'scatter',
+
+      name: `${q} リノベ`,
+
+      marker: {
+        size: 12,
+        symbol: 'diamond'
+      },
+
+      customdata: renovated,
+
+      hovertemplate:
+        '<b>%{customdata.name}</b><br>' +
+        '平米単価: %{y}万円<br>' +
+        '<extra></extra>'
+    });
+
+  });
+
+  Plotly.newPlot(
+    'chart',
+    traces,
+    {
+      title:
+        '阿波座・西長堀 中古マンション相場',
+
+      xaxis: {
+        title: '建築年月'
+      },
+
+      yaxis: {
+        title: '平米単価（万円/㎡）'
+      },
+
+      hovermode: 'closest'
+    },
+
+    {
+      responsive: true
+    }
+  );
+
+  document
+    .getElementById('chart')
+    .on('plotly_click', function(evt) {
+
+      const d =
+        evt.points[0].customdata;
+
+      alert(
+`${d.name}
+
+価格: ${d.price_man}万円
+面積: ${d.area_m2}㎡
+平米単価: ${d.unit_price}
+
+駅: ${d.station}
+徒歩: ${d.walk_min}分
+
+建築年月: ${d.build_ym}
+
+${d.url}`
+      );
+
+    });
+
+}
+
+loadData();
+
+</script>
+
+</body>
+</html>
