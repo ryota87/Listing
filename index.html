@@ -52,6 +52,33 @@ h1{
   z-index:999;
 }
 
+#detailCard.is-hidden{
+  display:none;
+}
+
+.detailHeader{
+  display:flex;
+  align-items:flex-start;
+  gap:12px;
+  justify-content:space-between;
+}
+
+.detailClose{
+  appearance:none;
+  border:0;
+  border-radius:6px;
+  background:#374151;
+  color:#f3f4f6;
+  cursor:pointer;
+  font-size:18px;
+  line-height:1;
+  padding:4px 8px 6px;
+}
+
+.detailClose:hover{
+  background:#4b5563;
+}
+
 #detailCard h3{
   margin-top:0;
 }
@@ -102,8 +129,16 @@ h1{
 <div id="chart"></div>
 
 <div id="detailCard">
-  <div id="detailContent">
-    点をタップすると詳細が表示されます
+  <div class="detailHeader">
+    <div id="detailContent">
+      点をタップすると詳細が表示されます
+    </div>
+    <button
+      id="detailClose"
+      class="detailClose"
+      type="button"
+      aria-label="詳細を閉じる"
+    >×</button>
   </div>
 </div>
 
@@ -127,10 +162,19 @@ const quarterColors = {
 
 const MY_HOME = {
   buildYm:'1999-09',
+  fetchedAt:'',
   area:62.74,
   purchasePrice:3450,
   renovatedPrice:4300
 };
+
+document
+  .getElementById('detailClose')
+  .addEventListener('click', function(){
+    document
+      .getElementById('detailCard')
+      .classList.add('is-hidden');
+  });
 
 async function loadData(){
 
@@ -307,6 +351,7 @@ function drawChart(data){
       area_m2:MY_HOME.area,
       unit_price:purchaseUnitPrice,
       build_ym:MY_HOME.buildYm,
+      fetched_at:MY_HOME.fetchedAt,
       station:'西長堀',
       walk_min:'',
       url:''
@@ -349,6 +394,7 @@ function drawChart(data){
       area_m2:MY_HOME.area,
       unit_price:renovatedUnitPrice,
       build_ym:MY_HOME.buildYm,
+      fetched_at:MY_HOME.fetchedAt,
       station:'西長堀',
       walk_min:'',
       url:''
@@ -406,6 +452,10 @@ function drawChart(data){
       const d =
         evt.points[0].customdata;
 
+      document
+        .getElementById('detailCard')
+        .classList.remove('is-hidden');
+
       document.getElementById(
         'detailContent'
       ).innerHTML = `
@@ -423,6 +473,8 @@ function drawChart(data){
         <p><b>徒歩</b>：${d.walk_min || '-'}分</p>
 
         <p><b>建築年月</b>：${d.build_ym}</p>
+
+        <p><b>取得日</b>：${d.fetched_at || '-'}</p>
 
         ${
           d.url
